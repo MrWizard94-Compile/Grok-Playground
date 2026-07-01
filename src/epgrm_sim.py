@@ -1,9 +1,21 @@
 """
 EP-GRM Simulator (Explicit Persistent Graph Rewrite Machine)
 
-Implements the architecture described in Phase 6 plan.
+[MODULE STATUS: PRIMARY IMPLEMENTATION - ITERATION 001]
+[SCIENTIFIC ROLE]: The concrete artifact against which all hypotheses are currently being tested.
+
+Implements the architecture described in Phase 6 plan (iterations/001/phase6-implementation-planning.md).
 
 This is the primary first artifact for testing H1-H5, H7.
+
+[KEY DESIGN DECISIONS - LABELED]:
+- Focus is the only "active" executive state [WORKING HYPOTHESIS: sufficient]
+- All computation = local pattern match + verified rewrite on versioned graph [CORE PRINCIPLE]
+- Instrumentation is first-class (not afterthought) [ESTABLISHED PRACTICE]
+- No global mutable activation [INVARIANT]
+
+[WARNING]: Claims about this simulator apply only to the workloads and parameters explicitly tested.
+Broad statements about "new architectures for AI" are [SPECULATION] until much more evidence.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -65,6 +77,10 @@ class EPGRMSimulator:
 
         # "Loaded" set for movement accounting (nodes whose attrs we have recently touched)
         self._loaded: Set[NodeID] = set()
+
+        # [PROGRESS 2026-07-01] Simple scheduler for better focus management on stressed graphs.
+        # This is an engineering improvement to allow measurement of "bounded + useful work".
+        self.scheduler = None  # Will be set in reset if needed
 
     def reset(self,
               initial_graph: VersionedGraph,
@@ -162,8 +178,20 @@ class EPGRMSimulator:
                 self.instr.end_step()
             return res
 
-        # 2. Pick
-        candidates.sort(key=lambda rc: rc[0].cost_hint)
+        # 2. Pick (enhanced with simple relevance for better progress on stress graphs)
+        # [IMPROVEMENT] Goal-aware priority: prefer rules that touch lower-depth / unadvanced nodes
+        def relevance_score(rc):
+            rule, m = rc
+            base = rule.cost_hint
+            focus_node = m.get("focus_node")
+            if focus_node and focus_node in self.graph.heads:
+                attrs = self.graph.get_current_attrs(focus_node)
+                depth = attrs.get("depth", 10)
+                advanced = 1 if attrs.get("advanced") else 0
+                return base + (depth * 0.1) + (advanced * 2)  # lower depth + not-yet-advanced preferred
+            return base
+
+        candidates.sort(key=relevance_score)
         rule, match = candidates[0]
         self.instr.record_rewrite_attempt() if self.instr else None
 

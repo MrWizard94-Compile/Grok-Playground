@@ -1,18 +1,25 @@
 """
 Stress dimension generators for EP-GRM.
 
+[MODULE STATUS: FALSIFICATION TOOL]
+[INTENT]: "Try to break it" — per explicit research strategy.
+
 Goal: deliberately try to break the architecture along the dimensions recommended:
 - graph depth / width / branching factor
 - density (many edges per node)
 - dependency overlap
 - cycles
-- conflicting / competing constraints
+- conflicting / competing constraints [PLANNED]
 - random edits / noise
-- disconnected components
+- disconnected components [PLANNED]
 
 These are used to generate harder instances of synthesis-like graphs and measure
 whether focus size stays bounded, movement stays flat, verification work scales reasonably,
 as graph size grows.
+
+[CLASSIFICATION]:
+- The generator itself is a tool [ESTABLISHED].
+- Results from using it update [WORKING HYPOTHESIS] status in CLAIMS_REGISTRY.md.
 """
 from __future__ import annotations
 from typing import Any, Dict, List, Set, Tuple

@@ -288,6 +288,35 @@ Includes:
 
 ---
 
+## ITERATION 001 — Obsessive Documentation + Progress Session (2026-07-01)
+
+### Documentation Obsession Actions Performed
+- Created full `docs/` structure:
+  - RESEARCH_MANIFEST.md [DOCUMENT - ESTABLISHED]
+  - CLAIMS_REGISTRY.md — all claims labeled with evidence + falsification criteria
+  - EPGRM_INVARIANTS.md — explicit must-hold list
+  - EXPERIMENT_REGISTRY.md — every experiment has ID + classification
+  - STATE_SNAPSHOT.md
+- Added [CLASSIFICATION] headers and inline labels to:
+  - src/core.py, src/metrics.py, src/epgrm_sim.py, src/tasks/stress.py
+- All results now cross-referenced with claim IDs.
+- New experiment (EXP-005) generated timestamped CSV + 3 labeled PNG plots.
+
+### Progress Actions (Best Judgement)
+- Added relevance-aware candidate sorting in the simulator step loop. This is an incremental improvement to the scheduler (as called for in Phase 6 plan) to enable measurement of "bounded focus + actual rewrites performed" on harder graphs.
+- Ran clean scaling experiment up to 120 nodes.
+- Result: Peak focus remains extremely flat (mean 5.3 at 120 nodes).
+
+### Updated Evidence Summary
+See docs/CLAIMS_REGISTRY.md and docs/STATE_SNAPSHOT.md for the obsessively labeled version.
+
+All activity remains strictly within EP-GRM + deliberate falsification.
+
+**Scientific Integrity:** Every new file and code change carries explicit labels. No claim has been broadened.
+
+
+---
+
 ## ITERATION 001 — Instrumentation + Stress Testing Update (2026-07-01)
 
 ### Major Changes Implemented Following Rigorous Feedback

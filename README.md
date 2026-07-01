@@ -5,6 +5,18 @@
 **Target Constraints:** ≤ 6 GB VRAM, consumer desktop (GTX 1660 Ti 6GB), modular, external persistent storage OK.  
 **Date Started:** 2026-07-01
 
+**Current Focus (strict):** EP-GRM only. One architecture, deep falsification before expansion.
+
+## Obsessive Documentation
+All claims are explicitly classified. See:
+- `docs/RESEARCH_MANIFEST.md`
+- `docs/CLAIMS_REGISTRY.md`
+- `docs/EPGRM_INVARIANTS.md`
+- `docs/EXPERIMENT_REGISTRY.md`
+- `docs/STATE_SNAPSHOT.md`
+
+Every Python module and result carries [ESTABLISHED] / [SUPPORTED INFERENCE] / [WORKING HYPOTHESIS] labels.
+
 ## Purpose
 Conduct a rigorous, iterative research program into fundamentally **new** computational architectures to advance autonomous software synthesis and intelligent computation.
 

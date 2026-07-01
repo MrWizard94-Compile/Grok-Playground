@@ -1,10 +1,25 @@
 """
 Rich instrumentation for EP-GRM experiments.
 
-Designed per research feedback:
+[MODULE STATUS: ESTABLISHED + INSTRUMENTATION LAYER]
+[DESIGN GOAL]: Obsessive data collection so that later analysis can answer "exactly how did focus behave under stress?"
+
+Per research feedback:
 - Record far more than pass/fail.
 - Enable plotting: peak focus vs graph size, rewrites vs size, verification work vs size, etc.
 - Support stress dimension analysis.
+
+[WHAT IS CAPTURED]:
+- rewrites_attempted / accepted / rejected
+- verification_calls
+- node_visits, edge_traversals
+- focus dynamics (size, adds, evictions) per step
+- movement proxy per step
+- timing + sampled memory
+- graph size evolution
+- checkpoint accounting
+
+This data is required for credible claims about scaling.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict

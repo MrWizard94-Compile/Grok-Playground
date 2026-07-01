@@ -1,6 +1,13 @@
 """
 Core data structures for EP-GRM simulator.
 
+[MODULE STATUS: ESTABLISHED]
+[PART OF: EP-GRM Reference Implementation]
+[INVARIANTS ENFORCED HERE]:
+  - FocusSet strictly respects max_size
+  - VersionedGraph provides immutable version history for every node
+  - All movement decisions are based on explicit "loaded" tracking (in simulator)
+
 Follows Phase 6 plan in iterations/001/phase6-implementation-planning.md
 
 Computational Model:
@@ -9,6 +16,10 @@ Computational Model:
 - Rewrites create new versions (immutable snapshots).
 
 All state transitions must be explicit and deterministic.
+
+[CLASSIFICATION NOTE]
+- Data structures themselves are [ESTABLISHED].
+- Their use in achieving long-horizon bounded cognition is [WORKING HYPOTHESIS].
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
