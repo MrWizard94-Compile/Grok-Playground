@@ -36,8 +36,10 @@ def run_experiment(n: int = 8, max_focus: int = 16, max_steps: int = 200):
     print(f"Verifications performed: {result.verifications}")
     print(f"Peak exec state during run: {max((e.get('focus', 0) for e in result.trace), default=0)}")
 
-    # Baselines (oracle progress — they "know" the right action, but still pay full reload cost)
-    print("\n--- Baselines (oracle progress, pessimistic movement) ---")
+    # Baselines (intentionally simplistic full-reload models for movement comparison only)
+    print("\n--- Baselines (pessimistic full-reload cost models) ---")
+    # Note: These baselines reload far more than necessary by design for contrast.
+    # Real comparison requires equivalent logic implemented in baseline style.
 
     def make_oracle_progress(target_n: int):
         state = {"pos": 0}
