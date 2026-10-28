@@ -1,0 +1,13 @@
+metric,value
+num_nodes,600
+peak_focus,4
+final_focus,4
+total_movement,0
+rewrites_accepted,0
+verifications,0
+node_visits,40
+steps,1
+final_edges,31792
+duration_s,0.04
+success,False
+max_focus,15

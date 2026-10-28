@@ -1,0 +1,6 @@
+structure,nodes,avg_degree,max_active_frontier,locality,rewrites,peak_focus,value_per_rew
+linear,300,3.47,14,0.2,60,8,2.0
+tree,300,7.49,31,0.2,60,8,2.0
+hub,300,39.88,212,0.2,60,8,2.0
+dense,200,20.54,119,0.3,60,8,2.0
+sparse_random,300,7.5,47,0.2,60,8,2.0

@@ -1,0 +1,2 @@
+size,seed,peak_focus,final_focus,total_movement,total_rewrites,total_verifs,unique_touched,final_nodes,information_locality,total_focus_admissions,rewrites_per_admission,efficiency_score,avg_focus,steps,final_edges,duration_s
+200,6242,4,4,0,0,0,4,379,0.0106,4,0.0,0.0,4.0,1,2577,0.007

@@ -26,6 +26,7 @@ from src.core import (
     VersionedGraph, FocusSet, RewriteRule, NodeID, RuleName
 )
 from src.metrics import Instrumentation, RunMetrics
+from src.memory_model import PageBasedMemory
 from contextlib import nullcontext
 
 
@@ -64,7 +65,8 @@ class EPGRMSimulator:
     verification, focus dynamics, graph size over time, timing, memory).
     """
 
-    def __init__(self, max_focus: int = 32, instrument: bool = True):
+    def __init__(self, max_focus: int = 32, instrument: bool = True,
+                 use_high_fidelity_memory: bool = False):
         self.graph: VersionedGraph = VersionedGraph()
         self.focus = FocusSet(max_size=max_focus)
         self.rules: List[RewriteRule] = []
@@ -78,9 +80,23 @@ class EPGRMSimulator:
         # "Loaded" set for movement accounting (nodes whose attrs we have recently touched)
         self._loaded: Set[NodeID] = set()
 
-        # [PROGRESS 2026-07-01] Simple scheduler for better focus management on stressed graphs.
-        # This is an engineering improvement to allow measurement of "bounded + useful work".
-        self.scheduler = None  # Will be set in reset if needed
+        # [TIER 1 HIGHER FIDELITY - HARDENED ALL - PUSH ENVELOPE]
+        self.use_high_fidelity_memory = use_high_fidelity_memory
+        self.memory_model: Optional[PageBasedMemory] = None
+        if use_high_fidelity_memory:
+            self.memory_model = PageBasedMemory(
+                l1_size=32768, dram_cost_mult=1.0, nvm_cost_mult=3.0
+            )
+
+        # [NEW for locality + efficiency per feedback]
+        self._unique_touched: Set[NodeID] = set()
+        self._focus_admissions_total: int = 0
+
+        # [SCHEDULER - IMPLEMENTED 2026-07-01] 
+        # Per Phase 6 plan: explicit scheduling model with goal relevance + priority.
+        # [STATUS: WORKING IMPLEMENTATION for current experiments]
+        # Enables measuring bounded focus WHILE making forward progress on stressed graphs.
+        self._scheduler_priority = {}  # node_id -> priority score
 
     def reset(self,
               initial_graph: VersionedGraph,
@@ -102,15 +118,38 @@ class EPGRMSimulator:
             self.instr.reset()
         self.trace = []
         self._loaded = set(initial_focus)
+        self._unique_touched = set(initial_focus)
+        self._focus_admissions_total = len(initial_focus)
+
+        if self.memory_model:
+            self.memory_model.reset()
 
     def _account_movement(self, node_ids: Set[NodeID]) -> int:
-        """Count bytes for nodes brought into executive attention."""
+        """Count bytes for nodes brought into executive attention.
+
+        Tier 1: When high-fidelity memory is enabled, use PageBasedMemory
+        for more realistic page/cache-line accounting.
+        """
         moved = 0
+        newly_touched = 0
+
         for nid in node_ids:
             if nid not in self._loaded:
-                size = self.graph.size_estimate(nid)
-                moved += size
                 self._loaded.add(nid)
+                self._unique_touched.add(nid)
+                newly_touched += 1
+
+                if self.memory_model:
+                    attrs = self.graph.get_current_attrs(nid)
+                    # Use enhanced hierarchy access for Tier 1
+                    moved += self.memory_model.access_node_with_hierarchy(nid, attrs, is_write=False)
+                else:
+                    size = self.graph.size_estimate(nid)
+                    moved += size
+
+        if self.instr and newly_touched > 0:
+            self.instr.current.nodes_touched_this_step = newly_touched
+
         return moved
 
     def _light_verify(self, rule: RewriteRule, match: Dict[str, Any]) -> bool:
@@ -176,22 +215,37 @@ class EPGRMSimulator:
             if self.instr:
                 self.instr.record_rewrite_rejected()
                 self.instr.end_step()
+                if not hasattr(self.instr.run, 'impasse_steps'):
+                    self.instr.run.impasse_steps = 0
+                self.instr.run.impasse_steps += 1
             return res
 
-        # 2. Pick (enhanced with simple relevance for better progress on stress graphs)
-        # [IMPROVEMENT] Goal-aware priority: prefer rules that touch lower-depth / unadvanced nodes
-        def relevance_score(rc):
+        # 2. Pick using explicit scheduler [PHASE 6 PLAN]
+        # [LABEL: WORKING HYPOTHESIS - goal-directed priority keeps focus small while enabling progress]
+        def compute_priority(node_id: NodeID) -> float:
+            if node_id not in self.graph.heads:
+                return 100.0
+            attrs = self.graph.get_current_attrs(node_id)
+            depth = float(attrs.get("depth", 10))
+            advanced = 1.0 if attrs.get("advanced") else 0.0
+            has_conflict = 5.0 if attrs.get("conflicting") else 0.0  # penalize but still consider
+            goal_boost = -2.0 if attrs.get("kind") == "root" or attrs.get("type") == "Goal" else 0.0
+            return depth * 0.8 + advanced * 3.0 + has_conflict - goal_boost
+
+        def scheduler_priority(rc):
             rule, m = rc
             base = rule.cost_hint
             focus_node = m.get("focus_node")
-            if focus_node and focus_node in self.graph.heads:
-                attrs = self.graph.get_current_attrs(focus_node)
-                depth = attrs.get("depth", 10)
-                advanced = 1 if attrs.get("advanced") else 0
-                return base + (depth * 0.1) + (advanced * 2)  # lower depth + not-yet-advanced preferred
+            if focus_node:
+                prio = compute_priority(focus_node)
+                # also consider target if present
+                target = m.get("target")
+                if target:
+                    prio = min(prio, compute_priority(target) * 0.9)
+                return base + prio
             return base
 
-        candidates.sort(key=relevance_score)
+        candidates.sort(key=scheduler_priority)
         rule, match = candidates[0]
         self.instr.record_rewrite_attempt() if self.instr else None
 
@@ -234,6 +288,7 @@ class EPGRMSimulator:
                 self.graph.rewrite_node(nid, attrs)
 
         # 6. Update focus + instrument changes
+        admissions_this_step = 0
         for nid in changed_nodes:
             if nid not in self.focus.members:
                 if not self.focus.add(nid):
@@ -244,10 +299,18 @@ class EPGRMSimulator:
                 else:
                     if self.instr:
                         self.instr.record_focus_add()
+                    admissions_this_step += 1
+                    self._focus_admissions_total += 1
+                    self._unique_touched.add(nid)
+        if self.instr:
+            self.instr.current.focus_admissions_this_step = admissions_this_step
 
         if self.instr:
             self.instr.record_focus_size(len(self.focus))
             self.instr.record_rewrite_accepted()
+            value = match.get("value", 1.0)
+            self.instr.current.value_this_step = value
+            self.instr.run.total_value += value
 
         # Trace (richer)
         trace_entry = {
@@ -290,6 +353,10 @@ class EPGRMSimulator:
                 if self.instr:
                     nodes = self.graph.graph.number_of_nodes()
                     edges = self.graph.graph.number_of_edges()
+                    self.instr.run.final_graph_nodes = nodes
+                    self.instr.run.unique_nodes_touched = len(self._unique_touched)
+                    self.instr.run.total_focus_admissions = self._focus_admissions_total
+                    self.instr.run.compute_locality()
                     self.instr.finalize_run(True, len(self.focus), nodes, edges)
                 return RunResult(
                     success=True,
@@ -306,6 +373,10 @@ class EPGRMSimulator:
         if self.instr:
             nodes = self.graph.graph.number_of_nodes()
             edges = self.graph.graph.number_of_edges()
+            self.instr.run.final_graph_nodes = nodes
+            self.instr.run.unique_nodes_touched = len(self._unique_touched)
+            self.instr.run.total_focus_admissions = self._focus_admissions_total
+            self.instr.run.compute_locality()
             self.instr.finalize_run(success, len(self.focus), nodes, edges)
 
         return RunResult(
@@ -324,7 +395,20 @@ class EPGRMSimulator:
 
     def get_run_metrics(self) -> Optional[RunMetrics]:
         """Return the rich instrumentation data."""
-        return self.instr.get_run_metrics() if self.instr else None
+        m = self.instr.get_run_metrics() if self.instr else None
+        if m and self.memory_model:
+            stats = self.memory_model.get_stats()
+            m.hf_total_bytes_moved = stats.get('total_bytes_moved', 0)
+            m.hf_page_faults = stats.get('page_faults', 0)
+            m.hf_write_backs = stats.get('write_backs', 0)
+            m.hf_persistence_log_entries = stats.get('persistence_log_entries', 0)
+        return m
+
+    def get_high_fidelity_stats(self) -> dict:
+        """[TIER 1] Return page-based memory statistics if enabled."""
+        if self.memory_model:
+            return self.memory_model.get_stats()
+        return {"high_fidelity_enabled": False}
 
     def checkpoint(self) -> Dict[str, Any]:
         """Minimal bootstrap checkpoint (for H4 persistence test)."""

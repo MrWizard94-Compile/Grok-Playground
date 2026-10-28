@@ -1,0 +1,2 @@
+max_focus,seed,peak_focus,final_focus,total_rewrites,steps,throughput,locality,efficiency,value_per_rewrite,impasses,duration,unique_touched,final_nodes
+6,123,6,6,150,150,1.0,0.08133971291866028,0.1668520578420467,2.0,0,4.486069440841675,153,1881

@@ -1,0 +1,2 @@
+target_F,achieved_F,N,approx_E,max_focus,seed,peak_focus,steps,total_rewrites,throughput,obs_L,pred_L_c1.5,efficiency,value_per_rewrite,unique_touched,avg_focus,impasses,duration_s
+250,254,1000,2800,12,42,12,77,76,0.987,0.077,0.381,0.0875,2.0,77,11.29,1,5.71

@@ -1,0 +1,5 @@
+Model fit summary from EXP-025/027/028/029 + priors
+Points: 49
+mean c: 0.6316
+stdev: 0.6209
+Key: architecture caps L strongly; c not constant.

@@ -47,6 +47,10 @@ class StepMetrics:
     graph_edges: int = 0
     duration_ms: float = 0.0
     memory_kb: float = 0.0  # approximate
+    # [NEW METRICS per user feedback on locality and efficiency]
+    focus_admissions_this_step: int = 0
+    nodes_touched_this_step: int = 0  # newly brought into attention this step
+    value_this_step: float = 0.0  # value delta from this rewrite (for quality metric)
 
 
 @dataclass
@@ -70,6 +74,30 @@ class RunMetrics:
     checkpoint_count: int = 0
     total_checkpoint_size: int = 0
 
+    # [NEW AGGREGATES for H1 efficiency + locality analysis per reviewer feedback]
+    total_focus_admissions: int = 0
+    unique_nodes_touched: int = 0   # Information Locality numerator
+    final_graph_nodes: int = 0
+    information_locality: float = 0.0  # unique_touched / final_graph_nodes  (lower = better locality)
+
+    # Usefulness / efficiency metrics
+    average_focus_size: float = 0.0
+    rewrites_per_admission: float = 0.0  # total_rewrites / total_admissions (higher = better scheduler efficiency)
+    efficiency_score: float = 0.0  # rewrites / (average_focus * steps)  (work per unit executive state per step)
+
+    # [NEW for diagnosing no-progress]
+    impasse_steps: int = 0  # number of steps with no candidates found
+
+    # Value of work (per reviewer feedback: not just quantity, but value/quality)
+    total_value: float = 0.0  # cumulative "value" from rewrites (e.g., progress deltas)
+    value_per_rewrite: float = 0.0  # average value per rewrite (convergence indicator)
+
+    # [TIER 1 HIGHER FIDELITY] Memory model stats
+    hf_total_bytes_moved: int = 0
+    hf_page_faults: int = 0
+    hf_write_backs: int = 0
+    hf_persistence_log_entries: int = 0
+
     # Time series (list of StepMetrics or lightweight dicts)
     per_step: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -77,6 +105,27 @@ class RunMetrics:
         d = asdict(self)
         d.pop('per_step', None)
         return d
+
+    def compute_locality(self):
+        if self.final_graph_nodes > 0 and self.final_graph_nodes > 0:
+            self.information_locality = self.unique_nodes_touched / self.final_graph_nodes
+        else:
+            self.information_locality = 0.0
+
+    def compute_efficiency(self):
+        if self.steps > 0:
+            # Compute average focus from per_step if available
+            if self.per_step:
+                focuses = [p.get('focus_size', 0) for p in self.per_step]
+                self.average_focus_size = sum(focuses) / len(focuses) if focuses else 0
+            else:
+                self.average_focus_size = (self.peak_focus_size + self.final_focus_size) / 2
+            if self.total_focus_admissions > 0:
+                self.rewrites_per_admission = self.total_rewrites_accepted / self.total_focus_admissions
+            if self.average_focus_size > 0:
+                self.efficiency_score = self.total_rewrites_accepted / (self.average_focus_size * self.steps)
+            if self.total_rewrites_accepted > 0:
+                self.value_per_rewrite = self.total_value / self.total_rewrites_accepted
 
 
 class Instrumentation:
@@ -137,6 +186,14 @@ class Instrumentation:
         if self.current.focus_size > self.run.peak_focus_size:
             self.run.peak_focus_size = self.current.focus_size
 
+        # Aggregate value
+        self.run.total_value += getattr(self.current, 'value_this_step', 0)
+
+        # Aggregate new metrics
+        self.run.total_focus_admissions += self.current.focus_admissions_this_step
+        # For unique touched, we rely on sim's _unique_touched for run level, but accumulate per step for series
+        self.run.unique_nodes_touched = max(self.run.unique_nodes_touched, self.current.nodes_touched_this_step)  # temp, actual set in sim
+
     def record_rewrite_attempt(self):
         self.current.rewrites_attempted += 1
         self.run.total_rewrites_attempted += 1  # incremental safety
@@ -181,6 +238,9 @@ class Instrumentation:
         # sum totals from per_step if not already aggregated perfectly
         if self.run.total_duration_s == 0:
             self.run.total_duration_s = sum(p.get('duration_ms', 0) for p in self.run.per_step) / 1000.0
+
+        self.run.compute_locality()
+        self.run.compute_efficiency()
 
     def get_run_metrics(self) -> RunMetrics:
         return self.run

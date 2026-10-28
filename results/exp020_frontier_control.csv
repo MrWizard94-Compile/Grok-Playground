@@ -1,0 +1,4 @@
+config,nodes,max_front,loc,rew,peak
+low_frontier,534.0,282,0.15730337078651685,80,10
+med_frontier,534.0,399,0.15730337078651685,80,10
+high_frontier,534.0,400,0.15730337078651685,80,10

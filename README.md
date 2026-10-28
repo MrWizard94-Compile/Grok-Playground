@@ -1,7 +1,7 @@
 # Autonomous Research System — Novel Computational Architecture Research
 
 **System Prompt Version:** v2.0  
-**Workspace:** C:\Projects\Grok_Playground  
+**Workspace:** C:\WPAI\Grok_Playground  
 **Target Constraints:** ≤ 6 GB VRAM, consumer desktop (GTX 1660 Ti 6GB), modular, external persistent storage OK.  
 **Date Started:** 2026-07-01
 

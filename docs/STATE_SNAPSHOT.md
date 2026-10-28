@@ -35,13 +35,14 @@
 6. `logs/RESEARCH_LOG.md` (for full history)
 
 ## Next Actions (Best Judgement)
-- Improve rule quality / scheduler further so more runs drive actual synthesis progress on stressed graphs.
-- Add "conflicting constraints" stress generator.
-- Run the new scaling experiment with even larger graphs (200+) if time/memory allows.
-- Add property tests that assert focus bound is never violated.
-- Update CLAIMS_REGISTRY with new EXP-005 data.
-- Keep obsessively labeling every new artifact.
+- [IN PROGRESS] Run additional batch at 250 nodes + disconnected for more stats.
+- Analyze focus-over-time series for stability (low variance when bounded).
+- Generate verification cost vs size/reviews plots.
+- Add more property tests (nogood determinism, scheduler priority monotonicity).
+- Update all registries with EXP-007 evidence (completed for this cycle).
+- Prepare consolidated evidence summary if pattern holds.
 
 **No new architectures will be introduced until EP-GRM has been thoroughly attacked along all stress dimensions.**
 
-This snapshot is itself labeled [ESTABLISHED] for the state at the moment of writing.
+**This snapshot updated 2026-07-01 post-EXP-007 [ESTABLISHED].**
+- Key new data: In 10 full-stress runs (150/200 nodes), peak focus 5-8 typical, max 10 (respected). Strong support for H1.

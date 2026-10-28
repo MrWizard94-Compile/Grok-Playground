@@ -1,0 +1,1 @@
+{'proxy': {'steps': 20, 'focus_peak': 3, 'locality': 0.12, 'movement': 98}, 'tier1_hf': {'steps': 20, 'focus_peak': 3, 'locality': 0.12, 'movement': 192, 'hf_bytes': 192, 'faults': 1}, 'tier2': {'steps': 30, 'focus_peak': 1, 'locality': 0.05, 'movement': 0}}

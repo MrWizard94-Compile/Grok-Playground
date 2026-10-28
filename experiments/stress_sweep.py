@@ -68,6 +68,7 @@ def run_stress_sweep(
                                     density=den,
                                     add_cycles=cyc,
                                     random_edits=ed,
+                                    add_conflicts=True,  # [NEW: conflicting constraints dimension - 2026-07-01]
                                     seed=seed
                                 )
 
